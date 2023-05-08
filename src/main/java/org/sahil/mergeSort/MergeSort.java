@@ -1,13 +1,11 @@
 package org.sahil.mergeSort;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.*;
 
 import static org.apache.commons.io.FileUtils.writeLines;
 
@@ -30,22 +28,20 @@ public class MergeSort {
         writeLines(file, mergedData, false);
     }
 
-    private static List<Integer> mergeFiles(List<File> files) throws IOException {
-//        Files.walk(Paths.get("src/main/resources/")).parallel().(Path::normalize).
-//                collect(Collectors.toList());
-
-        List<Integer> mergedVales = new ArrayList<>();
+    private static List<Integer> mergeFiles(List<File> files) throws IOException, ExecutionException, InterruptedException {
+        List<Future<List<Integer>>> futureMergedVales = new ArrayList<>();
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
         for(File file : files){
-            FileReader fr = new FileReader(file);
-            BufferedReader br = new BufferedReader(fr);
-            String line;
-            while( (line = br.readLine()) != null ){
-                mergedVales.add(Integer.valueOf(line));
-            }
-            fr.close();
-            br.close();
+            TxtFileReader fileReader = new TxtFileReader(file);
+            Future<List<Integer>> integerValues = executorService.submit(fileReader);
+            futureMergedVales.add(integerValues);
         }
-        return mergedVales;
+        List<Integer> mergedValues = new ArrayList<>();
+        for(Future<List<Integer>> values : futureMergedVales){
+            while(!values.isDone()) {}
+            mergedValues.addAll(values.get());
+        }
+        return mergedValues;
     }
 
     private static List<File> getAllFile() {
